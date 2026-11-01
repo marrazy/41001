@@ -51,3 +51,15 @@ async def create_item(
     await session.refresh(new_item)
     return new_item
 
+@app.post("/wallet/top-up")
+async def top_up(
+    body: TopUp,
+    user: User = Depends(current_active_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    user = await session.get(User, user.id, with_for_update=True, populate_existing=True)
+    user.balance = user.balance + body.amount
+    await session.commit()
+    return {"balance": user.balance}
+
+

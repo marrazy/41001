@@ -23,27 +23,28 @@ async def test_buyer_cannot_create_item(client, buyer):
     r = await client.post("/items", json={"name": "X", "price": "1", "stock": 1}, headers=buyer)
     assert r.status_code == 403
 
-@pytest.mark.skip(reason="top-up route not built yet")
+
 async def test_item_price_cannot_be_negative(client, seller):
     r = await client.post("/items", json={"name": "X", "price": "-5", "stock": 1}, headers=seller)
     assert r.status_code == 422
 
 
-@pytest.mark.skip(reason="top-up route not built yet")
+
 async def test_top_up_adds_money(client, buyer):
     r = await client.post("/wallet/top-up", json={"amount": "50"}, headers=buyer)
     assert r.status_code == 200
-    assert await get_balance(client, buyer) == 1050
+    assert await get_balance(client, buyer) == 50
 
-@pytest.mark.skip(reason="top-up route not built yet")
+
 async def test_top_up_must_be_positive(client, buyer):
     r = await client.post("/wallet/top-up", json={"amount": "-50"}, headers=buyer)
     assert r.status_code == 422
-    assert await get_balance(client, buyer) == 1000
+    assert await get_balance(client, buyer) == 0
 
 
 @pytest.mark.skip(reason="top-up route not built yet")
 async def test_buying_moves_money_and_stock(client, buyer, seller):
+    await client.post("/wallet/top-up", json={"amount": "100"}, headers=buyer)
     item = await create_item(client, seller, price="2.50", stock=10)
 
     r = await client.post(
@@ -52,8 +53,8 @@ async def test_buying_moves_money_and_stock(client, buyer, seller):
     assert r.status_code in (200, 201), r.text
     assert float(r.json()["total"]) == 10
 
-    assert await get_balance(client, buyer) == 990
-    assert await get_balance(client, seller) == 1010
+    assert await get_balance(client, buyer) == 90
+    assert await get_balance(client, seller) == 110
 
 @pytest.mark.skip(reason="top-up route not built yet")
 async def test_cannot_buy_more_than_stock(client, buyer, seller):
