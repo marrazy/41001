@@ -1,6 +1,6 @@
 import os
 
-os.environ.setdefault("JWT_SECRET", "random_jwt_secret_for_testing")
+os.environ.setdefault("JWT_SECRET", "random_jwt_secret_for_testing_asd98asyd9ashdas8dsad97tda7")
 
 import pytest
 from httpx2 import ASGITransport, AsyncClient
