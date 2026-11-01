@@ -1,0 +1,19 @@
+[project]
+name = "41001"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "arz", email = "fatih.arrazy@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "fastapi-users[sqlalchemy]>=15.0.5",
+]
+
+[project.scripts]
+41001 = "41001:main"
+
+[build-system]
+requires = ["uv_build>=0.12.18,<0.13.0"]
+build-backend = "uv_build"
