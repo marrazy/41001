@@ -20,6 +20,7 @@ class OrderLineIn(BaseModel):
     quantity: int = Field(gt=0)
 
 
+
 class UserRead(schemas.BaseUser[uuid.UUID]):
     name: str
     is_seller: bool

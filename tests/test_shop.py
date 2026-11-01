@@ -42,7 +42,7 @@ async def test_top_up_must_be_positive(client, buyer):
     assert await get_balance(client, buyer) == 0
 
 
-@pytest.mark.skip(reason="top-up route not built yet")
+
 async def test_buying_moves_money_and_stock(client, buyer, seller):
     await client.post("/wallet/top-up", json={"amount": "100"}, headers=buyer)
     item = await create_item(client, seller, price="2.50", stock=10)
@@ -54,28 +54,30 @@ async def test_buying_moves_money_and_stock(client, buyer, seller):
     assert float(r.json()["total"]) == 10
 
     assert await get_balance(client, buyer) == 90
-    assert await get_balance(client, seller) == 110
+    assert await get_balance(client, seller) == 10
 
-@pytest.mark.skip(reason="top-up route not built yet")
+
 async def test_cannot_buy_more_than_stock(client, buyer, seller):
+    await client.post("/wallet/top-up", json={"amount": "100"}, headers=buyer)
     item = await create_item(client, seller, stock=2)
     r = await client.post(
         "/orders", json={"lines": [{"item_id": item["id"], "quantity": 3}]}, headers=buyer
     )
     assert r.status_code == 400
-    assert await get_balance(client, buyer) == 1000  # nothing charged
+    assert await get_balance(client, buyer) == 100  
 
-@pytest.mark.skip(reason="top-up route not built yet")
+
 async def test_cannot_buy_without_enough_money(client, buyer, seller):
+    await client.post("/wallet/top-up", json={"amount": "100"}, headers=buyer)
     item = await create_item(client, seller, price="600", stock=5)
     r = await client.post(
         "/orders", json={"lines": [{"item_id": item["id"], "quantity": 2}]}, headers=buyer
     )
     assert r.status_code == 400
-    assert await get_balance(client, buyer) == 1000
-    assert await get_balance(client, seller) == 1000
+    assert await get_balance(client, buyer) == 100
+    assert await get_balance(client, seller) == 0
 
-@pytest.mark.skip(reason="top-up route not built yet")
+
 async def test_failed_order_changes_nothing(client, buyer, seller):
     """Second line fails, so the first line must not be saved either."""
     cheap = await create_item(client, seller, name="Cheap", price="1", stock=10)
@@ -90,8 +92,8 @@ async def test_failed_order_changes_nothing(client, buyer, seller):
         headers=buyer,
     )
     assert r.status_code == 400
-    assert await get_balance(client, buyer) == 1000
-    assert await get_balance(client, seller) == 1000
+    assert await get_balance(client, buyer) == 0
+    assert await get_balance(client, seller) == 0
 
 @pytest.mark.skip(reason="top-up route not built yet")
 async def test_my_orders_lists_only_my_orders(client, buyer, seller):
