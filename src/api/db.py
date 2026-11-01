@@ -33,6 +33,7 @@ class Item(Base):
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     price = Column(Numeric(10, 2), nullable=False)
+    stock = Column(Integer, default=0)
     created_at = Column(DateTime, server_default=func.now())
     
     seller = relationship("User", back_populates="items")
