@@ -35,7 +35,7 @@ class Item(Base):
     price = Column(Numeric(10, 2), nullable=False)
     created_at = Column(DateTime, server_default=func.now())
     
-    seller = relationship("Seller", back_populates="items")
+    seller = relationship("User", back_populates="items")
 
 class Order(Base):
     __tablename__ = "orders"

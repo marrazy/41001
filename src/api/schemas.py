@@ -27,7 +27,7 @@ class UserRead(schemas.BaseUser[uuid.UUID]):
 
 class UserCreate(schemas.BaseUserCreate):
     name: str = ""
-    is_seller = False
+    is_seller: bool = False
 
 class UserUpdate(schemas.BaseUserUpdate):
     name: str | None = None
