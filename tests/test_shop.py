@@ -95,15 +95,15 @@ async def test_failed_order_changes_nothing(client, buyer, seller):
     assert await get_balance(client, buyer) == 0
     assert await get_balance(client, seller) == 0
 
-@pytest.mark.skip(reason="top-up route not built yet")
 async def test_my_orders_lists_only_my_orders(client, buyer, seller):
+    await client.post("/wallet/top-up", json={"amount": "1000"}, headers=buyer)
     item = await create_item(client, seller)
     await client.post(
         "/orders", json={"lines": [{"item_id": item["id"], "quantity": 1}]}, headers=buyer
     )
     r = await client.get("/orders/me", headers=buyer)
     assert r.status_code == 200
-    assert len(r.json()) == 1
+    assert len(r.json()["orders"]) == 1
 
     r = await client.get("/orders/me", headers=seller)
-    assert r.json() == []
+    assert r.json() == {'orders': []}

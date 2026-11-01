@@ -3,6 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from decimal import Decimal
 
 from contextlib import asynccontextmanager
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from api.db import create_db_and_tables, User, get_async_session, Item, OrderItem, Order
 from api.schemas import ItemCreate, OrderCreate, TopUp, OrderLineIn, UserCreate, UserRead, UserUpdate
@@ -107,4 +109,22 @@ async def order(
     
     return {"order_id": new_order.id, "total": total, "balance": user.balance}
 
-    
+@app.get("/orders/me")
+async def get_my_orders(
+    user: User = Depends(current_active_user),
+    session: AsyncSession = Depends(get_async_session)
+):
+    result = await session.execute(select(Order).where(Order.buyer_id == user.id).order_by(Order.created_at.desc()).options(selectinload(Order.lines)))
+    orders = [row[0] for row in result.all()]
+
+    orders_data = []
+    for order in orders:
+        orders_data.append(
+            {
+                "id": order.id,
+                "created_at": order.created_at,
+                "lines": order.lines
+            }
+        )
+    return {"orders": orders_data}
+
