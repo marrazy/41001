@@ -7,9 +7,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from api.db import create_db_and_tables, User, get_async_session, Item, OrderItem, Order
-from api.schemas import ItemCreate, OrderCreate, TopUp, OrderLineIn, UserCreate, UserRead, UserUpdate
+from api.schemas import ItemCreate, OrderCreate, TopUp, OrderLineIn, UserCreate, UserRead, UserUpdate, ItemUpdate
 from api.users import auth_backend, current_active_user, fastapi_users
 
+import uuid
 
 @asynccontextmanager
 async def lifespan(app):
@@ -122,9 +123,130 @@ async def get_my_orders(
         orders_data.append(
             {
                 "id": order.id,
+                "total": order.total,
                 "created_at": order.created_at,
                 "lines": order.lines
+                
             }
         )
     return {"orders": orders_data}
 
+@app.get("/items")
+async def get_items(session: AsyncSession = Depends(get_async_session)):
+    result = await session.execute(select(Item).order_by(Item.created_at.desc()))
+    items = [row[0] for row in result.all()]
+
+    items_data = []
+    for item in items:
+        items_data.append(
+            {
+                "id": item.id,
+                "seller_id": item.seller_id,
+                "name": item.name,
+                "description": item.description,
+                "price": item.price,
+                "stock": item.stock
+            }
+        )
+    return {"items": items_data}
+
+@app.get("/items/mine")
+async def list_my_items(
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user)
+):
+    ensure_seller(user)
+    result = await session.execute(select(Item).order_by(Item.created_at.desc()).where(Item.seller_id == user.id))
+    items = result.scalars().all()
+
+    items_data = []
+    for item in items:
+        items_data.append(
+            {
+                "id": item.id,
+                "seller_id": item.seller_id,
+                "name": item.name,
+                "description": item.description,
+                "price": item.price,
+                "stock": item.stock
+            }
+        )
+    return {"items": items_data}
+
+@app.get("/items/{item_id}")
+async def get_single_item(
+    item_id: uuid.UUID,
+    session: AsyncSession = Depends(get_async_session)
+):
+    item = await session.get(Item, item_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Item not found")
+    
+    return {
+        "id": item.id,
+        "seller_id": item.seller_id,
+        "name": item.name,
+        "description": item.description,
+        "price": item.price,
+        "stock": item.stock
+    }
+
+@app.patch("/items/{item_id}")
+async def update_item(
+    item_id: uuid.UUID,
+    updated_item: ItemUpdate,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user)
+):
+    item = await session.get(Item, item_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Item not found")
+    if item.seller_id != user.id:
+        raise HTTPException(status_code=403, detail="Not this account's item")
+
+    for key, value in updated_item.model_dump(exclude_unset=True).items():
+        setattr(item, key, value)
+        
+    await session.commit()
+    await session.refresh(item)
+    return item
+
+@app.delete("/items/{item_id}", status_code=204)
+async def delete_item(
+    item_id: uuid.UUID,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user)
+):
+    item = await session.get(Item, item_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Item not found")
+    if item.seller_id != user.id:
+        raise HTTPException(status_code=403, detail="Not this account's item")
+
+    result = await session.execute(
+    select(OrderItem.id).where(OrderItem.item_id == item_id).limit(1)
+)
+    if result.first() is not None:
+        raise HTTPException(status_code=400, detail="Item has orders and can't be deleted")
+    await session.delete(item)
+    await session.commit()
+
+@app.get("/orders/{order_id}")
+async def single_order(
+    order_id: uuid.UUID,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user)
+):
+    result = await session.execute(select(Order).where(Order.id == order_id, Order.buyer_id == user.id).options(selectinload(Order.lines)))
+    order = result.scalar_one_or_none()
+    if order is None:
+        raise HTTPException(status_code=404, detail="Item not found")
+    if order.buyer_id != user.id:
+        raise HTTPException(status_code=404)
+    
+    return {
+        "id": order.id,
+        "created_at": order.created_at,
+        "total": order.total,
+        "lines": order.lines
+    }

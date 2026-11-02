@@ -32,3 +32,10 @@ class UserCreate(schemas.BaseUserCreate):
 
 class UserUpdate(schemas.BaseUserUpdate):
     name: str | None = None
+
+#patch
+class ItemUpdate(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    price: Decimal | None = Field(default=None, ge=0)
+    stock: int | None = Field(default=None, ge=0)
