@@ -185,12 +185,6 @@ async def test_delete_missing_item_is_404(client, seller):
  
  
 async def test_cannot_delete_item_that_has_orders(client, seller, buyer):
-    """An item that appears in an order can't be deleted, or the order would point at nothing.
- 
-    Note: SQLite (used in these tests) does NOT enforce foreign keys by default,
-    so the route has to check for existing order lines itself and return 400.
-    MySQL/PostgreSQL on RDS would refuse the delete with an IntegrityError instead.
-    """
     item = await create_item(client, seller)
     await place_order(client, buyer, item["id"])
  
