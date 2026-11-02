@@ -128,3 +128,22 @@ async def get_my_orders(
         )
     return {"orders": orders_data}
 
+@app.get("/items")
+async def get_items(session: AsyncSession = Depends(get_async_session)):
+    result = await session.execute(select(Item).order_by(Item.created_at.desc()).limit(10))
+    items = [row[0] for row in result.all()]
+
+    items_data = []
+    for item in items:
+        items_data.append(
+            {
+                "id": item.id,
+                "seller_id": item.seller_id,
+                "name": item.name,
+                "description": item.description,
+                "price": item.price,
+                "stock": item.stock
+            }
+        )
+    return {"items": items_data}
+    
