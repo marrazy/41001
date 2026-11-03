@@ -1,0 +1,4 @@
+/* Browsers add a margin to <body> by default; remove it so the page reaches the edges */
+body {
+  margin: 0;
+}
