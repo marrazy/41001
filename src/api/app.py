@@ -24,7 +24,7 @@ api.include_router(fastapi_users.get_auth_router(auth_backend), prefix='/auth/jw
 api.include_router(fastapi_users.get_register_router(UserRead, UserCreate), prefix="/auth", tags=["auth"])
 api.include_router(fastapi_users.get_reset_password_router(), prefix="/auth", tags=["auth"])
 api.include_router(fastapi_users.get_verify_router(UserRead), prefix="/auth", tags=["auth"])
-api.include_router(fastapi_users.get_users_router(UserRead, UserUpdate), prefix="/users", tags=["users"])
+a.include_router(fastapi_users.get_users_router(UserRead, UserUpdate), prefix="/users", tags=["users"])
 
 def ensure_seller(user: User):
     if not user.is_seller:
@@ -80,6 +80,8 @@ async def order(
         item = await session.get(Item, line.item_id, with_for_update=True, populate_existing=True)
         if item is None:
             raise HTTPException(status_code=404)
+        if item.seller_id == user.id:
+            raise HTTPException(status_code=400, detail="You can't buy your own item")
         if item.stock < line.quantity:
             raise HTTPException(status_code=400)
         item.stock = item.stock - line.quantity
@@ -253,3 +255,21 @@ async def single_order(
     }
 
 app.include_router(api)
+
+from pathlib import Path
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+
+FRONTEND_DIR = (Path(__file__).resolve().parents[2] / "frontend" / "dist").resolve()
+
+if FRONTEND_DIR.is_dir():
+    app.mount("/assets", StaticFiles(directory=FRONTEND_DIR / "assets"), name="assets")
+
+    @app.get("/{path:path}", include_in_schema=False)
+    async def serve_frontend(path: str):
+        if path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="Not Found")
+        file = (FRONTEND_DIR / path).resolve()
+        if path and file.is_file() and FRONTEND_DIR in file.parents:
+            return FileResponse(file)
+        return FileResponse(FRONTEND_DIR / "index.html")
