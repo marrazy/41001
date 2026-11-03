@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, APIRouter
 from sqlalchemy.ext.asyncio import AsyncSession
 from decimal import Decimal
 
@@ -18,12 +18,13 @@ async def lifespan(app):
     yield
 
 app = FastAPI(lifespan=lifespan)
+api = APIRouter(prefix="/api")
 
-app.include_router(fastapi_users.get_auth_router(auth_backend), prefix='/auth/jwt', tags=["auth"])
-app.include_router(fastapi_users.get_register_router(UserRead, UserCreate), prefix="/auth", tags=["auth"])
-app.include_router(fastapi_users.get_reset_password_router(), prefix="/auth", tags=["auth"])
-app.include_router(fastapi_users.get_verify_router(UserRead), prefix="/auth", tags=["auth"])
-app.include_router(fastapi_users.get_users_router(UserRead, UserUpdate), prefix="/users", tags=["users"])
+api.include_router(fastapi_users.get_auth_router(auth_backend), prefix='/auth/jwt', tags=["auth"])
+api.include_router(fastapi_users.get_register_router(UserRead, UserCreate), prefix="/auth", tags=["auth"])
+api.include_router(fastapi_users.get_reset_password_router(), prefix="/auth", tags=["auth"])
+api.include_router(fastapi_users.get_verify_router(UserRead), prefix="/auth", tags=["auth"])
+api.include_router(fastapi_users.get_users_router(UserRead, UserUpdate), prefix="/users", tags=["users"])
 
 def ensure_seller(user: User):
     if not user.is_seller:
@@ -34,7 +35,7 @@ def ensure_seller(user: User):
 async def health_check():
     return {"status": "ok"}
 
-@app.post("/items")
+@api.post("/items")
 async def create_item(
     body: ItemCreate,
     user: User = Depends(current_active_user),
@@ -54,7 +55,7 @@ async def create_item(
     await session.refresh(new_item)
     return new_item
 
-@app.post("/wallet/top-up")
+@api.post("/wallet/top-up")
 async def top_up(
     body: TopUp,
     user: User = Depends(current_active_user),
@@ -66,7 +67,7 @@ async def top_up(
     return {"balance": user.balance}
 
 
-@app.post("/orders")
+@api.post("/orders")
 async def order(
     body: OrderCreate,
     user: User = Depends(current_active_user),
@@ -110,7 +111,7 @@ async def order(
     
     return {"order_id": new_order.id, "total": total, "balance": user.balance}
 
-@app.get("/orders/me")
+@api.get("/orders/me")
 async def get_my_orders(
     user: User = Depends(current_active_user),
     session: AsyncSession = Depends(get_async_session)
@@ -131,7 +132,7 @@ async def get_my_orders(
         )
     return {"orders": orders_data}
 
-@app.get("/items")
+@api.get("/items")
 async def get_items(session: AsyncSession = Depends(get_async_session)):
     result = await session.execute(select(Item).order_by(Item.created_at.desc()))
     items = [row[0] for row in result.all()]
@@ -150,7 +151,7 @@ async def get_items(session: AsyncSession = Depends(get_async_session)):
         )
     return {"items": items_data}
 
-@app.get("/items/mine")
+@api.get("/items/mine")
 async def list_my_items(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_active_user)
@@ -173,7 +174,7 @@ async def list_my_items(
         )
     return {"items": items_data}
 
-@app.get("/items/{item_id}")
+@api.get("/items/{item_id}")
 async def get_single_item(
     item_id: uuid.UUID,
     session: AsyncSession = Depends(get_async_session)
@@ -191,7 +192,7 @@ async def get_single_item(
         "stock": item.stock
     }
 
-@app.patch("/items/{item_id}")
+@api.patch("/items/{item_id}")
 async def update_item(
     item_id: uuid.UUID,
     updated_item: ItemUpdate,
@@ -211,7 +212,7 @@ async def update_item(
     await session.refresh(item)
     return item
 
-@app.delete("/items/{item_id}", status_code=204)
+@api.delete("/items/{item_id}", status_code=204)
 async def delete_item(
     item_id: uuid.UUID,
     session: AsyncSession = Depends(get_async_session),
@@ -231,7 +232,7 @@ async def delete_item(
     await session.delete(item)
     await session.commit()
 
-@app.get("/orders/{order_id}")
+@api.get("/orders/{order_id}")
 async def single_order(
     order_id: uuid.UUID,
     session: AsyncSession = Depends(get_async_session),
@@ -250,3 +251,5 @@ async def single_order(
         "total": order.total,
         "lines": order.lines
     }
+
+app.include_router(api)
