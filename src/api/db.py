@@ -9,7 +9,18 @@ from fastapi_users.db import SQLAlchemyBaseUserTableUUID, SQLAlchemyUserDatabase
 from fastapi import Depends
 
 
-DATABASE_URL = "sqlite+aiosqlite:///./test.db"
+import os
+from urllib.parse import quote_plus
+
+if os.environ.get("RDS_HOSTNAME"):
+    DATABASE_URL = (
+        f"mysql+aiomysql://{os.environ['RDS_USERNAME']}:{quote_plus(os.environ['RDS_PASSWORD'])}"
+        f"@{os.environ['RDS_HOSTNAME']}:{os.environ.get('RDS_PORT', '3306')}/{os.environ['RDS_DB_NAME']}"
+    )
+else:
+    DATABASE_URL = "sqlite+aiosqlite:///./test.db"   # local and CI
+
+engine = create_async_engine(DATABASE_URL, pool_pre_ping=True, pool_recycle=3600)
 
 class Base(DeclarativeBase):
     pass
@@ -64,7 +75,7 @@ class OrderItem(Base):
 
 
 
-engine = create_async_engine(DATABASE_URL)
+
 async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
 
 async def create_db_and_tables():
