@@ -34,7 +34,7 @@ export default function Login() {
   }
 
   return (
-    <AuthCard title="Log in" subtitle="Welcome back. Log in to shop or manage your items.">
+    <AuthCard title="Log in" subtitle="For Instructors: Use buyer@buyer.com with Password '12345' for Buyer account, seller@seller.com with Password '12345'">
       <form onSubmit={handleSubmit}>
         <Flex direction="column" gap="4">
           <ErrorBox message={error} />

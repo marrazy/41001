@@ -34,7 +34,7 @@ export default function Register() {
   }
 
   return (
-    <AuthCard title="Create an account" subtitle="Money in FreshBasket is simulated. No real payments are made.">
+    <AuthCard title="Create an account" subtitle="Money is simulated for this assignment.">
       <form onSubmit={handleSubmit}>
         <Flex direction="column" gap="4">
           <ErrorBox message={error} />

@@ -4,6 +4,7 @@ os.environ.setdefault("JWT_SECRET", "random_jwt_secret_for_testing_asd98asyd9ash
 
 import pytest
 from httpx2 import ASGITransport, AsyncClient
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from api.app import app
@@ -12,6 +13,9 @@ from api.db import Base, get_async_session
 @pytest.fixture
 async def client(tmp_path):
     engine = create_async_engine(f"sqlite+aiosqlite:///{tmp_path}/qa.db")
+    @event.listens_for(engine.sync_engine, "connect")
+    def enable_foreign_keys(dbapi_conn, _):
+        dbapi_conn.execute("PRAGMA foreign_keys=ON")
     async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
 
     async with engine.begin() as conn:

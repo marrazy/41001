@@ -19,7 +19,6 @@ export default function ItemForm() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
-  // When editing, fill the form with the item's current values
   useEffect(() => {
     if (!editing) return
     api(`/items/${id}`)

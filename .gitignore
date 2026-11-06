@@ -2,6 +2,8 @@
 endpoints.md
 study/
 build_zip.py
+requirements.txt
+deploy.zip
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

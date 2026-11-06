@@ -1,11 +1,16 @@
 from collections.abc import AsyncGenerator
 import uuid
 
+
+import asyncio
+from sqlalchemy.exc import DBAPIError
+
 from sqlalchemy import Column, String, Text, DateTime, ForeignKey, Numeric, Integer, Boolean, Uuid, func
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase, relationship
 from datetime import datetime
 from fastapi_users.db import SQLAlchemyBaseUserTableUUID, SQLAlchemyUserDatabase
+from fastapi_users_db_sqlalchemy.generics import GUID
 from fastapi import Depends
 
 
@@ -18,7 +23,7 @@ if os.environ.get("RDS_HOSTNAME"):
         f"@{os.environ['RDS_HOSTNAME']}:{os.environ.get('RDS_PORT', '3306')}/{os.environ['RDS_DB_NAME']}"
     )
 else:
-    DATABASE_URL = "sqlite+aiosqlite:///./test.db"   # local and CI
+    DATABASE_URL = "sqlite+aiosqlite:///./test.db"
 
 engine = create_async_engine(DATABASE_URL, pool_pre_ping=True, pool_recycle=3600)
 
@@ -39,8 +44,8 @@ class User(SQLAlchemyBaseUserTableUUID, Base):
 class Item(Base):
     __tablename__ = "items"
 
-    id = Column(Uuid, primary_key=True, default=uuid.uuid4)
-    seller_id = Column(Uuid, ForeignKey("users.id"), nullable=False)
+    id = Column(GUID, primary_key=True, default=uuid.uuid4)
+    seller_id = Column(GUID, ForeignKey("users.id"), nullable=False)
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     price = Column(Numeric(10, 2), nullable=False)
@@ -52,8 +57,8 @@ class Item(Base):
 class Order(Base):
     __tablename__ = "orders"
 
-    id = Column(Uuid, primary_key=True, default=uuid.uuid4)
-    buyer_id = Column(Uuid, ForeignKey("users.id"), nullable=False)
+    id = Column(GUID, primary_key=True, default=uuid.uuid4)
+    buyer_id = Column(GUID, ForeignKey("users.id"), nullable=False)
     total = Column(Numeric(10, 2), nullable=False)
     created_at = Column(DateTime, server_default=func.now())
 
@@ -63,9 +68,9 @@ class Order(Base):
 class OrderItem(Base):
     __tablename__ = "order_items"
 
-    id = Column(Uuid, primary_key=True, default=uuid.uuid4)
-    order_id = Column(Uuid, ForeignKey("orders.id"), nullable=False)
-    item_id = Column(Uuid, ForeignKey("items.id"), nullable=False)
+    id = Column(GUID, primary_key=True, default=uuid.uuid4)
+    order_id = Column(GUID, ForeignKey("orders.id"), nullable=False)
+    item_id = Column(GUID, ForeignKey("items.id"), nullable=False)
     quantity = Column(Integer, nullable=False)
     unit_price = Column(Numeric(10, 2))
 
@@ -79,8 +84,15 @@ class OrderItem(Base):
 async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
 
 async def create_db_and_tables():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    for attempt in range(5):
+        try:
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            return
+        except DBAPIError as e:
+            if "already exists" not in str(e).lower() or attempt == 4:
+                raise
+            await asyncio.sleep(1 + attempt)
 
 async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
     async with async_session_maker() as session:

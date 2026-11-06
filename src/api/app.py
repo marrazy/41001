@@ -2,8 +2,9 @@ from fastapi import FastAPI, HTTPException, Depends, APIRouter
 from sqlalchemy.ext.asyncio import AsyncSession
 from decimal import Decimal
 
+
 from contextlib import asynccontextmanager
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import selectinload
 
 from api.db import create_db_and_tables, User, get_async_session, Item, OrderItem, Order
@@ -34,6 +35,11 @@ def ensure_seller(user: User):
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
+
+@api.get("/health/db")
+async def health_db(session: AsyncSession = Depends(get_async_session)):
+    await session.execute(text("SELECT 1"))
+    return {"database": "ok"}
 
 @api.post("/items")
 async def create_item(
